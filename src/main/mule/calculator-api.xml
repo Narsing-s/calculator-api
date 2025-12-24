@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <http:listener-config name="calculator-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="calculator-api-config" api="calculator-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="calculator-api-main">
+        <http:listener config-ref="calculator-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="calculator-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="calculator-api-console">
+        <http:listener config-ref="calculator-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="calculator-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\add:calculator-api-config">
+		<logger level="INFO" doc:name="Start Flow" doc:id="23631f22-2d78-4c3e-bddd-430bb096a70d" message="-------------------Start Flow-------------" />
+		<set-variable value="#[attributes.queryParams.num1]" doc:name="num" doc:id="8bce6192-ae94-4528-b879-58be0f451c48" variableName="num1" />
+		<set-variable value="#[attributes.queryParams.num2]" doc:name="num1" doc:id="7b88ba60-c688-4819-97bf-815ad9e17aa7" variableName="num2" />
+		<logger level="INFO" doc:name="Before transform" doc:id="96dac11c-3d62-4174-8ec5-f2151bd5137b" message="---------------------Before transform---------------" />
+		<ee:transform doc:name="logic transform" doc:id="b6faffbd-cabf-42ac-83ac-f7c0c9b3e90a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  result: vars.num1 + vars.num2
+} ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="After transform" doc:id="8fcbb766-6c58-473a-9449-02662ea633c2" message="--------------After transform------------" />
+		<logger level="INFO" doc:name="End Flow" doc:id="370da729-28ad-46bb-91aa-5cf0a0f17c2c" message="#[message.payload]" />
+    </flow>
+    <flow name="get:\dev:calculator-api-config">
+		<logger level="INFO" doc:name="Start Flow" doc:id="aca08e3a-7c18-4d1a-b9b6-431d737a0930" message="-------------------Start Flow-------------" />
+		<set-variable value="#[attributes.queryParams.num1]" doc:name="num" doc:id="83629cad-f515-4916-a49b-19dc19413035" variableName="num1" />
+		<set-variable value="#[attributes.queryParams.num2]" doc:name="num1" doc:id="02c6e197-a132-44bc-b2ec-be70a5d4368e" variableName="num2" />
+		<logger level="INFO" doc:name="Before transform" doc:id="e315b9b7-5d1e-4ea6-87f5-e53ff77eff26" message="---------------------Before transform---------------" />
+		<ee:transform doc:name="logic transform" doc:id="51bdf949-8e94-4c97-8b55-e82135c8d950" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  result: vars.num1 / vars.num2
+} ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="After transform" doc:id="cf030738-1a6c-41a2-91d1-cac604d269b1" message="--------------After transform------------" />
+		<logger level="INFO" doc:name="End Flow" doc:id="31b0e574-970d-4ff2-acaa-529673318808" message="#[message.payload]" />
+    </flow>
+    <flow name="get:\mul:calculator-api-config">
+		<logger level="INFO" doc:name="Start Flow" doc:id="f600adc9-1059-475e-8f03-60690d12da05" message="-------------------Start Flow-------------" />
+		<set-variable value="#[attributes.queryParams.num1]" doc:name="num" doc:id="7255c489-12d2-4083-909f-2e463fd01ae2" variableName="num1" />
+		<set-variable value="#[attributes.queryParams.num2]" doc:name="num1" doc:id="dee014cb-db15-4d5a-b5e5-bbbf1b609452" variableName="num2" />
+		<logger level="INFO" doc:name="Before transform" doc:id="f4cb0c45-f8c6-4b49-96ce-f3ec0349ad82" message="---------------------Before transform---------------" />
+		<ee:transform doc:name="logic transform" doc:id="a1d19c72-6983-4fa4-b934-1903b2ef2552" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  result: vars.num1 * vars.num2
+} ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="After transform" doc:id="fd64987f-ee39-4910-8104-0277b7eef244" message="--------------After transform------------" />
+		<logger level="INFO" doc:name="End Flow" doc:id="f75023af-1ed4-44e7-a0e3-6c3ebee5172f" message="#[message.payload]" />
+    </flow>
+    <flow name="get:\sub:calculator-api-config">
+        <logger level="INFO" doc:name="Start Flow" doc:id="e4ffd3e2-6a52-45c2-93fc-08449cc07a8e" message="-------------------Start Flow-------------"/>
+		<set-variable value="#[attributes.queryParams.num1]" doc:name="num1" doc:id="f403f45a-b282-4841-8569-6e0e8977458b" variableName="num1"/>
+		<set-variable value="#[attributes.queryParams.num2]" doc:name="num2" doc:id="0f339bb1-8259-4343-981c-1124884f40da" variableName="num2"/>
+		<logger level="INFO" doc:name="Before transform" doc:id="552b5375-320c-4989-bb6c-c94eb671f9eb" message="---------------------Before transform---------------"/>
+		<ee:transform doc:name="logic transform">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  result: vars.num1 - vars.num2
+} ]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<logger level="INFO" doc:name="After transform" doc:id="0eebe28c-c97c-4e2d-ab6b-29289dd36217" message="--------------After transform------------"/>
+		<logger level="INFO" doc:name="End Flow" doc:id="2f01e054-bdf0-47db-885b-3434807f8bab" message="#[message.payload]"/>
+    </flow>
+</mule>
