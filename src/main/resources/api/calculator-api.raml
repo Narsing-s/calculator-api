@@ -1,0 +1,79 @@
+#%RAML 1.0
+title: calculator-api
+version: v1
+protocols:
+  - HTTP
+mediaType: 
+- application/json
+
+traits:
+  query: !include Libraries/traits/queryParams-trait.raml
+
+/add:
+  get:
+    is:
+      - query
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include Libraries/examples/addition-response.json             
+      405:
+        body:
+          application/json:
+            example: !include Libraries/common-error-examples/405-error-example-file.json
+      500:
+        body:
+          application/json:
+            example: !include /Libraries/common-error-examples/500-error-example-file.json
+/sub:
+  get:
+    is:
+      - query
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include Libraries/examples/sub-response-file.json
+      405:
+        body:
+          application/json:
+            example: !include Libraries/common-error-examples/405-error-example-file.json
+      500:
+        body:
+          application/json:
+            example: !include /Libraries/common-error-examples/500-error-example-file.json
+/mul:
+  get:
+    is:
+      - query
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include Libraries/examples/addition-response.json
+      405:
+        body:
+          application/json:
+            example: !include Libraries/common-error-examples/405-error-example-file.json
+      500:
+        body:
+          application/json:
+            example: !include Libraries/common-error-examples/500-error-example-file.json
+/dev:
+  get:
+    is:
+      - query
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include Libraries/examples/division-response-file.json              
+      405:
+        body:
+          application/json:
+            example: !include Libraries/common-error-examples/405-error-example-file.json
+      500:
+        body:
+          application/json:
+            example: !include Libraries/common-error-examples/500-error-example-file.json
