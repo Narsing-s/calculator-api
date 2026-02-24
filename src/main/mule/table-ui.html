@@ -2,76 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Maths Table Generator</title>
+  <title>Calculator API UI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* Classic, minimal look (similar to your screenshot) */
+    /* Classic, minimal look */
     body { font-family: Georgia, 'Times New Roman', serif; margin: 22px; color: #111; }
-    h1 { margin: 0 0 4px; font-size: 2em; }
+    h1 { margin: 0 0 6px; font-size: 2em; }
     p.help { margin: 0 0 16px; color: #333; }
     .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-    .row label { width: 120px; }
+    .row label { width: 140px; }
     .row input[type="number"],
     .row input[type="text"] { width: 260px; padding: 4px 6px; }
     .hint { color: #666; font-size: 0.9em; }
-    .btns { margin: 10px 0; }
+    .btns { margin: 10px 0; display: flex; gap: 8px; flex-wrap: wrap; }
     button { padding: 4px 8px; }
+    a.op { display:inline-block; padding:4px 8px; border:1px solid #aaa; border-radius:4px; text-decoration:none; color:#111; background:#f6f6f6; }
+    a.op:hover { background:#eee; }
     h2 { margin-top: 18px; font-size: 1.3em; }
     pre { background: #f7f7f7; border: 1px solid #ddd; padding: 10px; white-space: pre-wrap; }
     .error { color: #b00020; font-weight: bold; }
     footer { margin-top: 24px; color: #666; font-size: 0.9em; }
+    code.url { display:block; margin-top:6px; color:#333; }
   </style>
 </head>
 <body>
-  <h1>Maths Table Generator</h1>
-  <p class="help">Calls Mule flow at <code>/table</code> and shows the result.</p>
+  <h1>Calculator API</h1>
+  <p class="help">Calls Mule APIKit endpoints at <code>/api/*</code> and shows the JSON result.</p>
 
   <div class="row">
-    <label for="n">Number (n)</label>
-    <input id="n" type="number" step="1" placeholder="e.g., 5" />
+    <label for="num1">Number 1 (num1)</label>
+    <input id="num1" type="number" step="any" placeholder="e.g., 12" />
   </div>
   <div class="row">
-    <label for="s">Start (s)</label>
-    <input id="s" type="number" step="1" placeholder="e.g., 1" />
+    <label for="num2">Number 2 (num2)</label>
+    <input id="num2" type="number" step="any" placeholder="e.g., 3" />
   </div>
+
   <div class="row">
-    <label for="e">End (e)</label>
-    <input id="e" type="number" step="1" placeholder="e.g., 10" />
+    <label>Operation (links)</label>
+    <div class="btns" aria-label="Operation Links">
+      <a href="#" class="op" data-op="add">Add</a>
+      <a href="#" class="op" data-op="sub">Subtract</a>
+      <a href="#" class="op" data-op="mul">Multiply</a>
+      <a href="#" class="op" data-op="dev">Divide</a>
+    </div>
   </div>
+
+  <div class="row">
+    <label for="op">Operation (dropdown)</label>
+    <select id="op">
+      <option value="add">Add</option>
+      <option value="sub">Subtract</option>
+      <option value="mul">Multiply</option>
+      <option value="dev">Divide</option>
+    </select>
+    <button id="go">Calculate</button>
+    <button id="reset" type="button">Reset</button>
+  </div>
+
   <div class="row">
     <label for="base">API Base URL</label>
     <input id="base" type="text" value="http://localhost:8081" />
-    <span class="hint">Change this if your API is hosted elsewhere.</span>
-  </div>
-
-  <div class="btns">
-    <button id="go">Generate</button>
-    <button id="reset" type="button">Reset</button>
+    <span class="hint">Change this if deployed elsewhere.</span>
   </div>
 
   <h2>Result</h2>
   <div id="out"></div>
+  <code class="url" id="lastUrl"></code>
 
-  <footer>© <span id="year"></span> Maths Table UI • Powered by Mule</footer>
+  <footer>© <span id="year"></span> Calculator UI • Powered by Mule</footer>
 
   <script>
     const $ = (id) => document.getElementById(id);
     $('year').textContent = new Date().getFullYear();
 
-    function showResult(lines) {
+    function buildUrl(base, op, n1, n2) {
+      base = base.trim().replace(/\/+$/, '');
+      const url = `${base}/api/${op}?num1=${encodeURIComponent(n1)}&num2=${encodeURIComponent(n2)}`;
+      $('lastUrl').textContent = url;
+      return url;
+    }
+
+    function showResult(data) {
       const out = $('out');
       out.className = '';
-      if (Array.isArray(lines)) {
-        // Show as lines, as your flow returns ["5x1=5", ...]
-        const pre = document.createElement('pre');
-        pre.textContent = lines.join('\n');
-        out.replaceChildren(pre);
-      } else {
-        // Fallback dump
-        const pre = document.createElement('pre');
-        pre.textContent = typeof lines === 'string' ? lines : JSON.stringify(lines, null, 2);
-        out.replaceChildren(pre);
-      }
+      const pre = document.createElement('pre');
+      pre.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      out.replaceChildren(pre);
     }
 
     function showError(message) {
@@ -80,48 +97,49 @@
       out.textContent = message;
     }
 
-    async function generate() {
-      const n = $('n').value.trim();
-      const s = $('s').value.trim();
-      const e = $('e').value.trim();
-      const base = $('base').value.trim().replace(/\/+$/, ''); // strip trailing /
-
-      if (n === '' || s === '' || e === '') {
-        showError('Please fill Number, Start, and End.');
-        return;
+    function getInputs() {
+      const n1 = $('num1').value.trim();
+      const n2 = $('num2').value.trim();
+      const base = $('base').value.trim();
+      if (n1 === '' || n2 === '') {
+        throw new Error('Please enter both numbers.');
       }
+      return { base, n1, n2 };
+    }
 
-      // Build JSON body expected by your flow
-      const body = {
-        num: Number(n),
-        str: Number(s),
-        end: Number(e)
-      };
-
+    async function call(op) {
       try {
-        const res = await fetch(base + '/table', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify(body)
-        });
+        const { base, n1, n2 } = getInputs();
+        const url = buildUrl(base, op, n1, n2);
 
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
         const text = await res.text();
+
         let data;
-        try { data = JSON.parse(text); } catch { data = text; }
+        try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
         if (!res.ok) {
-          // Your validation block returns { error, details } with status 400
-          const msg =
-            (data && (data.details || data.error || data.message)) ||
-            `HTTP ${res.status}`;
+          const msg = (data && (data.message || data.error || data.details)) || `HTTP ${res.status}`;
           showError(msg);
           return;
         }
-
         showResult(data);
       } catch (err) {
-        showError('Network error: ' + err.message);
+        showError(err.message);
       }
     }
 
-    $('go').addEventListener('click', generate);
+    // Links
+    document.querySelectorAll('a.op').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const op = e.currentTarget.getAttribute('data-op');
+        call(op);
+      });
+    });
+
+    // Dropdown + Calculate button
+    $('go').addEventListener('click', () => call($('op').value));
+
+    // Reset
+    $('reset').addEventListener('click', () => {
