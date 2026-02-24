@@ -191,7 +191,7 @@
         <div class="col-6">
           <label for="base">API Base URL</label>
           <input id="base" type="text" value="
-https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io" />
+https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io/api/ " />
         </div>
 
         <div class="col-12 toolbar" style="margin-top:6px">
@@ -266,7 +266,7 @@ https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io" />
       const n1 = $('num1').value.trim();
       const n2 = $('num2').value.trim();
       const base = $('base').value.trim() || '
-https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io';
+https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io/api/ ';
       if (n1 === '' || n2 === '') throw new Error('Please enter both numbers.');
       return { base, n1, n2 };
     }
