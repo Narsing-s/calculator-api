@@ -1,80 +1,244 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Calculator API UI</title>
+  <title>Calculator API — Modern UI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* Classic, minimal look */
-    body { font-family: Georgia, 'Times New Roman', serif; margin: 22px; color: #111; }
-    h1 { margin: 0 0 6px; font-size: 2em; }
-    p.help { margin: 0 0 16px; color: #333; }
-    .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-    .row label { width: 140px; }
-    .row input[type="number"],
-    .row input[type="text"] { width: 260px; padding: 4px 6px; }
-    .hint { color: #666; font-size: 0.9em; }
-    .btns { margin: 10px 0; display: flex; gap: 8px; flex-wrap: wrap; }
-    button { padding: 4px 8px; }
-    a.op { display:inline-block; padding:4px 8px; border:1px solid #aaa; border-radius:4px; text-decoration:none; color:#111; background:#f6f6f6; }
-    a.op:hover { background:#eee; }
-    h2 { margin-top: 18px; font-size: 1.3em; }
-    pre { background: #f7f7f7; border: 1px solid #ddd; padding: 10px; white-space: pre-wrap; }
-    .error { color: #b00020; font-weight: bold; }
-    footer { margin-top: 24px; color: #666; font-size: 0.9em; }
-    code.url { display:block; margin-top:6px; color:#333; }
+    /* ========== THEME TOKENS ========== */
+    :root {
+      --bg: #0b1020;
+      --bg-alt: #0e1530;
+      --card: rgba(255, 255, 255, 0.05);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text: #e8edff;
+      --muted: #a8b0cc;
+      --accent: #7cfe92;
+      --accent-2: #7a9cff;
+      --danger: #ff7a7a;
+      --shadow: 0 20px 50px rgba(0,0,0,.45);
+      --ring: 0 0 0 3px rgba(124, 254, 146, .25);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --radius: 14px;
+    }
+    [data-theme="light"]{
+      --bg: #eef2ff;
+      --bg-alt: #f7f8ff;
+      --card: rgba(255,255,255,.9);
+      --card-border: rgba(0,0,0,.08);
+      --text: #0d1330;
+      --muted: #55608a;
+      --accent: #2fb171;
+      --accent-2: #2c62ff;
+      --danger: #d93025;
+      --shadow: 0 18px 40px rgba(0,0,0,.08);
+      --ring: 0 0 0 3px rgba(44, 98, 255, .18);
+    }
+
+    /* ========== BASE ========== */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1200px 600px at 10% -20%, #1c2a66 0%, transparent 60%),
+        radial-gradient(800px 500px at 100% 0%, #17314d 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
+      color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      -webkit-font-smoothing: antialiased;
+      padding: 32px 18px 40px;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; }
+
+    /* ========== HEADER ========== */
+    .header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-bottom: 18px;
+    }
+    .title h1 { margin: 0; font-weight: 800; letter-spacing: .2px; font-size: clamp(1.6rem, 2.2vw + 1rem, 2.4rem); }
+    .title p { margin: 4px 0 0; color: var(--muted); }
+
+    .theme-toggle {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 999px;
+      background: var(--card); border: 1px solid var(--card-border); cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+    .theme-toggle input { display: none; }
+    .knob {
+      width: 44px; height: 24px; border-radius: 999px; position: relative; background: #1b2344; border: 1px solid var(--card-border);
+    }
+    .knob::after {
+      content: ""; position: absolute; top: 50%; left: 3px; transform: translateY(-50%);
+      width: 18px; height: 18px; border-radius: 50%; background: var(--accent); transition: left .25s ease;
+      box-shadow: 0 2px 10px rgba(0,0,0,.25);
+    }
+    input:checked + .knob::after { left: 23px; }
+
+    /* ========== CARD ========== */
+    .card {
+      border: 1px solid var(--card-border);
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    /* ========== FORM ========== */
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(12, 1fr); }
+    .col-6 { grid-column: span 6; }
+    .col-12 { grid-column: span 12; }
+    @media (max-width: 720px) {
+      .col-6 { grid-column: span 12; }
+    }
+
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input[type="number"], input[type="text"], select {
+      width: 100%; padding: 12px 14px; border-radius: 10px; color: var(--text);
+      background: rgba(255,255,255,.06); border: 1px solid var(--card-border); outline: none;
+    }
+    input:focus, select:focus { box-shadow: var(--ring); border-color: transparent; }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn, .chip {
+      appearance: none; border: 1px solid var(--card-border);
+      padding: 10px 14px; border-radius: 12px; font-weight: 700;
+      background: rgba(255,255,255,.06); color: var(--text); cursor: pointer;
+      transition: transform .03s ease, background .15s ease;
+    }
+    .btn:hover, .chip:hover { background: rgba(255,255,255,.12); }
+    .btn:active, .chip:active { transform: translateY(1px); }
+    .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border: none; color: #081226; }
+    .btn.ghost { background: transparent; }
+    .chip { font-weight: 600; }
+    .chip.add { border-color: rgba(124,254,146,.35); }
+    .chip.sub { border-color: rgba(255,180,0,.35); }
+    .chip.mul { border-color: rgba(122,156,255,.35); }
+    .chip.dev { border-color: rgba(255,122,122,.35); }
+
+    /* ========== OUTPUT ========== */
+    .output { margin-top: 16px; display: grid; gap: 12px; }
+    .result, .url {
+      border: 1px dashed var(--card-border);
+      background: rgba(255,255,255,.04); border-radius: 12px; padding: 14px;
+      font-family: var(--mono); white-space: pre-wrap; word-break: break-word;
+    }
+    .result.error { border-color: rgba(255, 0, 0, .25); color: var(--danger); background: rgba(255,0,0,.06); }
+
+    .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+
+    /* ========== TOAST ========== */
+    .toast {
+      position: fixed; right: 18px; bottom: 18px;
+      background: #121a2f; color: #eaf0ff; padding: 10px 14px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.1); opacity: 0; transform: translateY(10px);
+      transition: .25s ease; box-shadow: var(--shadow); pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
   </style>
 </head>
 <body>
-  <h1>Calculator API</h1>
-  <p class="help">Calls Mule APIKit endpoints at <code>/api/*</code> and shows the JSON result.</p>
+  <div class="wrap">
+    <!-- Header -->
+    <div class="header">
+      <div class="title">
+        <h1>Calculator API</h1>
+        <p>Call Mule APIKit endpoints at <code>/api/*</code> and view the JSON response.</p>
+      </div>
 
-  <div class="row">
-    <label for="num1">Number 1 (num1)</label>
-    <input id="num1" type="number" step="any" placeholder="e.g., 12" />
-  </div>
-  <div class="row">
-    <label for="num2">Number 2 (num2)</label>
-    <input id="num2" type="number" step="any" placeholder="e.g., 3" />
-  </div>
-
-  <div class="row">
-    <label>Operation (links)</label>
-    <div class="btns" aria-label="Operation Links">
-      <a href="#" class="op" data-op="add">Add</a>
-      <a href="#" class="op" data-op="sub">Subtract</a>
-      <a href="#" class="op" data-op="mul">Multiply</a>
-      <a href="#" class="op" data-op="dev">Divide</a>
+      <label class="theme-toggle" title="Toggle light/dark">
+        <span>Theme</span>
+        <input id="theme" type="checkbox" />
+        <span class="knob"></span>
+      </label>
     </div>
+
+    <!-- Card -->
+    <div class="card">
+      <div class="grid">
+        <div class="col-6">
+          <label for="num1">Number 1 (<code>num1</code>)</label>
+          <input id="num1" type="number" step="any" placeholder="e.g., 12" />
+        </div>
+        <div class="col-6">
+          <label for="num2">Number 2 (<code>num2</code>)</label>
+          <input id="num2" type="number" step="any" placeholder="e.g., 3" />
+        </div>
+
+        <div class="col-12">
+          <label>Quick operations</label>
+          <div class="toolbar" role="group" aria-label="Quick operations">
+            <button class="chip add" data-op="add" type="button">➕ Add</button>
+            <button class="chip sub" data-op="sub" type="button">➖ Subtract</button>
+            <button class="chip mul" data-op="mul" type="button">✖ Multiply</button>
+            <button class="chip dev" data-op="dev" type="button">➗ Divide</button>
+          </div>
+          <p class="subtitle">Or use the selector below.</p>
+        </div>
+
+        <div class="col-6">
+          <label for="op">Operation (selector)</label>
+          <select id="op">
+            <option value="add">Add</option>
+            <option value="sub">Subtract</option>
+            <option value="mul">Multiply</option>
+            <option value="dev">Divide</option>
+          </select>
+        </div>
+
+        <div class="col-6">
+          <label for="base">API Base URL</label>
+          <input id="base" type="text" value="http://localhost:8081" />
+        </div>
+
+        <div class="col-12 toolbar" style="margin-top:6px">
+          <button id="go" class="btn primary" type="button">Calculate</button>
+          <button id="reset" class="btn ghost" type="button">Reset</button>
+        </div>
+      </div>
+
+      <!-- Output -->
+      <div class="output">
+        <div class="result" id="out">Result will appear here.</div>
+        <div class="url" id="lastUrl">Requested URL will appear here.</div>
+      </div>
+    </div>
+
+    <p class="subtitle" style="margin-top:12px">
+      Tip: Your flows expect <code>GET /api/&lt;op&gt;?num1=&lt;n1&gt;&amp;num2=&lt;n2&gt;</code> and return <code>{"result": &lt;number&gt;}</code>.
+    </p>
+
+    <p class="subtitle">© <span id="year"></span> Calculator UI • Powered by Mule</p>
   </div>
 
-  <div class="row">
-    <label for="op">Operation (dropdown)</label>
-    <select id="op">
-      <option value="add">Add</option>
-      <option value="sub">Subtract</option>
-      <option value="mul">Multiply</option>
-      <option value="dev">Divide</option>
-    </select>
-    <button id="go">Calculate</button>
-    <button id="reset" type="button">Reset</button>
-  </div>
-
-  <div class="row">
-    <label for="base">API Base URL</label>
-    <input id="base" type="text" value="http://localhost:8081" />
-    <span class="hint">Change this if deployed elsewhere.</span>
-  </div>
-
-  <h2>Result</h2>
-  <div id="out"></div>
-  <code class="url" id="lastUrl"></code>
-
-  <footer>© <span id="year"></span> Calculator UI • Powered by Mule</footer>
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
     const $ = (id) => document.getElementById(id);
     $('year').textContent = new Date().getFullYear();
+
+    // ----- Theme toggle (persist) -----
+    const THEME_KEY = 'calc-ui-theme';
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    $('theme').checked = (document.documentElement.getAttribute('data-theme') === 'light');
+    $('theme').addEventListener('change', () => {
+      const mode = $('theme').checked ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', mode);
+      localStorage.setItem(THEME_KEY, mode);
+      toast(`Theme: ${mode}`);
+    });
+
+    // ----- Helpers -----
+    function toast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1800);
+    }
 
     function buildUrl(base, op, n1, n2) {
       base = base.trim().replace(/\/+$/, '');
@@ -85,33 +249,37 @@
 
     function showResult(data) {
       const out = $('out');
-      out.className = '';
-      const pre = document.createElement('pre');
-      pre.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-      out.replaceChildren(pre);
+      out.className = 'result';
+      out.textContent = ''; // reset
+      const pretty = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      out.textContent = pretty;
     }
 
     function showError(message) {
       const out = $('out');
-      out.className = 'error';
+      out.className = 'result error';
       out.textContent = message;
     }
 
     function getInputs() {
       const n1 = $('num1').value.trim();
       const n2 = $('num2').value.trim();
-      const base = $('base').value.trim();
-      if (n1 === '' || n2 === '') {
-        throw new Error('Please enter both numbers.');
-      }
+      const base = $('base').value.trim() || 'http://localhost:8081';
+      if (n1 === '' || n2 === '') throw new Error('Please enter both numbers.');
       return { base, n1, n2 };
     }
 
     async function call(op) {
       try {
         const { base, n1, n2 } = getInputs();
-        const url = buildUrl(base, op, n1, n2);
 
+        // client-side check for divide-by-zero
+        if (op === 'dev' && Number(n2) === 0) {
+          showError('Division by zero is not allowed.');
+          return;
+        }
+
+        const url = buildUrl(base, op, n1, n2);
         const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
         const text = await res.text();
 
@@ -129,17 +297,24 @@
       }
     }
 
-    // Links
-    document.querySelectorAll('a.op').forEach(a => {
-      a.addEventListener('click', (e) => {
-        e.preventDefault();
-        const op = e.currentTarget.getAttribute('data-op');
-        call(op);
-      });
-    });
+    // Quick operation buttons
+    document.querySelectorAll('.chip').forEach(b =>
+      b.addEventListener('click', () => call(b.getAttribute('data-op')))
+    );
 
-    // Dropdown + Calculate button
+    // Dropdown Calculate
     $('go').addEventListener('click', () => call($('op').value));
 
     // Reset
     $('reset').addEventListener('click', () => {
+      $('num1').value = '';
+      $('num2').value = '';
+      $('out').className = 'result';
+      $('out').textContent = 'Result will appear here.';
+      $('lastUrl').textContent = 'Requested URL will appear here.';
+      $('op').value = 'add';
+      toast('Cleared.');
+    });
+  </script>
+</body>
+</html>
