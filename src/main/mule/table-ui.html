@@ -190,8 +190,8 @@
 
         <div class="col-6">
           <label for="base">API Base URL</label>
-          <input id="base" type="text" value="
-https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io/api/ " />
+          <input id="base" type="text"
+                 value="https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io/api/"/>
         </div>
 
         <div class="col-12 toolbar" style="margin-top:6px">
@@ -241,9 +241,26 @@ https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io/api/ " />
       setTimeout(() => t.classList.remove('show'), 1800);
     }
 
+    /**
+     * Normalize a user-supplied Base URL so that:
+     *  - whitespace/newlines are removed
+     *  - trailing slashes are trimmed
+     *  - exactly one '/api' segment is present
+     * Then build:   <apiRoot>/<op>?num1=..&num2=..
+     */
     function buildUrl(base, op, n1, n2) {
-      base = base.trim().replace(/\/+$/, '');
-      const url = `${base}/api/${op}?num1=${encodeURIComponent(n1)}&num2=${encodeURIComponent(n2)}`;
+      // remove whitespace/newlines within the field (in case of pasted values)
+      base = (base || '').replace(/\s+/g, '');
+
+      // trim trailing slashes
+      base = base.replace(/\/+$/, '');
+
+      // ensure exactly one '/api' at the end of the base
+      let apiRoot = base.endsWith('/api') ? base : (
+        base.endsWith('/api/') ? base.slice(0, -1) : base + '/api'
+      );
+
+      const url = `${apiRoot}/${op}?num1=${encodeURIComponent(n1)}&num2=${encodeURIComponent(n2)}`;
       $('lastUrl').textContent = url;
       return url;
     }
@@ -251,7 +268,6 @@ https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io/api/ " />
     function showResult(data) {
       const out = $('out');
       out.className = 'result';
-      out.textContent = ''; // reset
       const pretty = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
       out.textContent = pretty;
     }
@@ -265,8 +281,7 @@ https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io/api/ " />
     function getInputs() {
       const n1 = $('num1').value.trim();
       const n2 = $('num2').value.trim();
-      const base = $('base').value.trim() || '
-https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io/api/ ';
+      const base = $('base').value;
       if (n1 === '' || n2 === '') throw new Error('Please enter both numbers.');
       return { base, n1, n2 };
     }
