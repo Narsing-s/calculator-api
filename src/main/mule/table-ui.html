@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Maths Table Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* Classic, minimal look (similar to your screenshot) */
+    body { font-family: Georgia, 'Times New Roman', serif; margin: 22px; color: #111; }
+    h1 { margin: 0 0 4px; font-size: 2em; }
+    p.help { margin: 0 0 16px; color: #333; }
+    .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+    .row label { width: 120px; }
+    .row input[type="number"],
+    .row input[type="text"] { width: 260px; padding: 4px 6px; }
+    .hint { color: #666; font-size: 0.9em; }
+    .btns { margin: 10px 0; }
+    button { padding: 4px 8px; }
+    h2 { margin-top: 18px; font-size: 1.3em; }
+    pre { background: #f7f7f7; border: 1px solid #ddd; padding: 10px; white-space: pre-wrap; }
+    .error { color: #b00020; font-weight: bold; }
+    footer { margin-top: 24px; color: #666; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>Maths Table Generator</h1>
+  <p class="help">Calls Mule flow at <code>/table</code> and shows the result.</p>
+
+  <div class="row">
+    <label for="n">Number (n)</label>
+    <input id="n" type="number" step="1" placeholder="e.g., 5" />
+  </div>
+  <div class="row">
+    <label for="s">Start (s)</label>
+    <input id="s" type="number" step="1" placeholder="e.g., 1" />
+  </div>
+  <div class="row">
+    <label for="e">End (e)</label>
+    <input id="e" type="number" step="1" placeholder="e.g., 10" />
+  </div>
+  <div class="row">
+    <label for="base">API Base URL</label>
+    <input id="base" type="text" value="http://localhost:8081" />
+    <span class="hint">Change this if your API is hosted elsewhere.</span>
+  </div>
+
+  <div class="btns">
+    <button id="go">Generate</button>
+    <button id="reset" type="button">Reset</button>
+  </div>
+
+  <h2>Result</h2>
+  <div id="out"></div>
+
+  <footer>© <span id="year"></span> Maths Table UI • Powered by Mule</footer>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    $('year').textContent = new Date().getFullYear();
+
+    function showResult(lines) {
+      const out = $('out');
+      out.className = '';
+      if (Array.isArray(lines)) {
+        // Show as lines, as your flow returns ["5x1=5", ...]
+        const pre = document.createElement('pre');
+        pre.textContent = lines.join('\n');
+        out.replaceChildren(pre);
+      } else {
+        // Fallback dump
+        const pre = document.createElement('pre');
+        pre.textContent = typeof lines === 'string' ? lines : JSON.stringify(lines, null, 2);
+        out.replaceChildren(pre);
+      }
+    }
+
+    function showError(message) {
+      const out = $('out');
+      out.className = 'error';
+      out.textContent = message;
+    }
+
+    async function generate() {
+      const n = $('n').value.trim();
+      const s = $('s').value.trim();
+      const e = $('e').value.trim();
+      const base = $('base').value.trim().replace(/\/+$/, ''); // strip trailing /
+
+      if (n === '' || s === '' || e === '') {
+        showError('Please fill Number, Start, and End.');
+        return;
+      }
+
+      // Build JSON body expected by your flow
+      const body = {
+        num: Number(n),
+        str: Number(s),
+        end: Number(e)
+      };
+
+      try {
+        const res = await fetch(base + '/table', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = text; }
+
+        if (!res.ok) {
+          // Your validation block returns { error, details } with status 400
+          const msg =
+            (data && (data.details || data.error || data.message)) ||
+            `HTTP ${res.status}`;
+          showError(msg);
+          return;
+        }
+
+        showResult(data);
+      } catch (err) {
+        showError('Network error: ' + err.message);
+      }
+    }
+
+    $('go').addEventListener('click', generate);
