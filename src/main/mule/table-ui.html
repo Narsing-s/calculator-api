@@ -265,7 +265,8 @@ https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io" />
     function getInputs() {
       const n1 = $('num1').value.trim();
       const n2 = $('num2').value.trim();
-      const base = $('base').value.trim() || 'http://localhost:8081';
+      const base = $('base').value.trim() || '
+https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io';
       if (n1 === '' || n2 === '') throw new Error('Please enter both numbers.');
       return { base, n1, n2 };
     }
