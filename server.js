@@ -3,56 +3,85 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-// Home route
+// Home Page (Web UI)
 app.get('/', (req, res) => {
-    res.send("Calculator API is running 🚀");
+    res.send(`
+        <html>
+        <head>
+            <title>Calculator</title>
+            <style>
+                body {
+                    font-family: Arial;
+                    text-align: center;
+                    margin-top: 100px;
+                    background: #f4f4f4;
+                }
+                input {
+                    padding: 10px;
+                    margin: 5px;
+                    width: 100px;
+                }
+                button {
+                    padding: 10px 15px;
+                    margin: 5px;
+                    cursor: pointer;
+                }
+                #result {
+                    margin-top: 20px;
+                    font-size: 20px;
+                    font-weight: bold;
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Calculator Web UI 🚀</h1>
+
+            <input type="number" id="num1" placeholder="Number 1">
+            <input type="number" id="num2" placeholder="Number 2">
+            <br>
+
+            <button onclick="calculate('add')">+</button>
+            <button onclick="calculate('sub')">-</button>
+            <button onclick="calculate('mul')">*</button>
+            <button onclick="calculate('div')">/</button>
+
+            <div id="result"></div>
+
+            <script>
+                async function calculate(operation) {
+                    const a = document.getElementById('num1').value;
+                    const b = document.getElementById('num2').value;
+
+                    const response = await fetch('/' + operation + '?a=' + a + '&b=' + b);
+                    const data = await response.json();
+
+                    document.getElementById('result').innerText =
+                        data.result !== undefined
+                        ? "Result: " + data.result
+                        : data.error;
+                }
+            </script>
+        </body>
+        </html>
+    `);
 });
 
-// Validation function
-function validateNumbers(a, b, res) {
-    if (isNaN(a) || isNaN(b)) {
-        res.status(400).json({ error: "Invalid numbers" });
-        return false;
-    }
-    return true;
-}
-
-// Addition
+// API Routes
 app.get('/add', (req, res) => {
-    const a = Number(req.query.a);
-    const b = Number(req.query.b);
-
-    if (!validateNumbers(a, b, res)) return;
-
-    res.json({ result: a + b });
+    res.json({ result: Number(req.query.a) + Number(req.query.b) });
 });
 
-// Subtraction
 app.get('/sub', (req, res) => {
-    const a = Number(req.query.a);
-    const b = Number(req.query.b);
-
-    if (!validateNumbers(a, b, res)) return;
-
-    res.json({ result: a - b });
+    res.json({ result: Number(req.query.a) - Number(req.query.b) });
 });
 
-// Multiplication
 app.get('/mul', (req, res) => {
-    const a = Number(req.query.a);
-    const b = Number(req.query.b);
-
-    if (!validateNumbers(a, b, res)) return;
-
-    res.json({ result: a * b });
+    res.json({ result: Number(req.query.a) * Number(req.query.b) });
 });
 
-// Division
 app.get('/div', (req, res) => {
     const a = Number(req.query.a);
     const b = Number(req.query.b);
-
-    if (!validateNumbers(a, b, res)) return;
 
     if (b === 0) {
         return res.status(400).json({ error: "Cannot divide by zero" });
@@ -62,5 +91,5 @@ app.get('/div', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Calculator API running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
