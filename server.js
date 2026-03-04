@@ -1,0 +1,37 @@
+const express = require('express');
+const app = express();
+
+const PORT = process.env.PORT || 3000;
+
+app.get('/add', (req, res) => {
+    const a = Number(req.query.a);
+    const b = Number(req.query.b);
+    res.json({ result: a + b });
+});
+
+app.get('/sub', (req, res) => {
+    const a = Number(req.query.a);
+    const b = Number(req.query.b);
+    res.json({ result: a - b });
+});
+
+app.get('/mul', (req, res) => {
+    const a = Number(req.query.a);
+    const b = Number(req.query.b);
+    res.json({ result: a * b });
+});
+
+app.get('/div', (req, res) => {
+    const a = Number(req.query.a);
+    const b = Number(req.query.b);
+
+    if (b === 0) {
+        return res.status(400).json({ error: "Cannot divide by zero" });
+    }
+
+    res.json({ result: a / b });
+});
+
+app.listen(PORT, () => {
+    console.log(`Calculator API running on port ${PORT}`);
+});
