@@ -1,95 +1,150 @@
-const express = require('express');
-const app = express();
-
-const PORT = process.env.PORT || 3000;
-
-// Home Page (Web UI)
 app.get('/', (req, res) => {
-    res.send(`
-        <html>
-        <head>
-            <title>Calculator</title>
-            <style>
-                body {
-                    font-family: Arial;
-                    text-align: center;
-                    margin-top: 100px;
-                    background: #f4f4f4;
-                }
-                input {
-                    padding: 10px;
-                    margin: 5px;
-                    width: 100px;
-                }
-                button {
-                    padding: 10px 15px;
-                    margin: 5px;
-                    cursor: pointer;
-                }
-                #result {
-                    margin-top: 20px;
-                    font-size: 20px;
-                    font-weight: bold;
-                }
-            </style>
-        </head>
-        <body>
-            <h1>Calculator Web UI 🚀</h1>
+res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<title>Neon Calculator</title>
 
-            <input type="number" id="num1" placeholder="Number 1">
-            <input type="number" id="num2" placeholder="Number 2">
-            <br>
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #141e30, #243b55);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: white;
+}
 
-            <button onclick="calculate('add')">+</button>
-            <button onclick="calculate('sub')">-</button>
-            <button onclick="calculate('mul')">*</button>
-            <button onclick="calculate('div')">/</button>
+.card {
+    backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.05);
+    border-radius: 20px;
+    padding: 40px;
+    width: 380px;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(0,255,255,0.2);
+    animation: fadeIn 1s ease-in-out;
+}
 
-            <div id="result"></div>
+h1 {
+    margin-bottom: 30px;
+    letter-spacing: 2px;
+}
 
-            <script>
-                async function calculate(operation) {
-                    const a = document.getElementById('num1').value;
-                    const b = document.getElementById('num2').value;
+input {
+    width: 140px;
+    padding: 12px;
+    margin: 10px;
+    border-radius: 10px;
+    border: none;
+    font-size: 18px;
+    text-align: center;
+    outline: none;
+}
 
-                    const response = await fetch('/' + operation + '?a=' + a + '&b=' + b);
-                    const data = await response.json();
+.operators {
+    margin-top: 20px;
+}
 
-                    document.getElementById('result').innerText =
-                        data.result !== undefined
-                        ? "Result: " + data.result
-                        : data.error;
-                }
-            </script>
-        </body>
-        </html>
-    `);
-});
+.operators button {
+    width: 70px;
+    height: 70px;
+    margin: 10px;
+    font-size: 30px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: #00ffff;
+    color: black;
+    font-weight: bold;
+    transition: 0.3s;
+    box-shadow: 0 0 20px #00ffff;
+}
 
-// API Routes
-app.get('/add', (req, res) => {
-    res.json({ result: Number(req.query.a) + Number(req.query.b) });
-});
+.operators button:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 35px #00ffff;
+}
 
-app.get('/sub', (req, res) => {
-    res.json({ result: Number(req.query.a) - Number(req.query.b) });
-});
+.calculate {
+    margin-top: 25px;
+    padding: 12px 30px;
+    border-radius: 30px;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    background: #ff00cc;
+    color: white;
+    transition: 0.3s;
+    box-shadow: 0 0 20px #ff00cc;
+}
 
-app.get('/mul', (req, res) => {
-    res.json({ result: Number(req.query.a) * Number(req.query.b) });
-});
+.calculate:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 35px #ff00cc;
+}
 
-app.get('/div', (req, res) => {
-    const a = Number(req.query.a);
-    const b = Number(req.query.b);
+#result {
+    margin-top: 30px;
+    font-size: 24px;
+    font-weight: bold;
+    min-height: 30px;
+}
 
-    if (b === 0) {
-        return res.status(400).json({ error: "Cannot divide by zero" });
+@keyframes fadeIn {
+    from {opacity:0; transform:translateY(20px);}
+    to {opacity:1; transform:translateY(0);}
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+    <h1>⚡ Neon Calculator ⚡</h1>
+
+    <input type="number" id="num1" placeholder="First Number">
+    <input type="number" id="num2" placeholder="Second Number">
+
+    <div class="operators">
+        <button onclick="setOp('add')">+</button>
+        <button onclick="setOp('sub')">−</button>
+        <button onclick="setOp('mul')">×</button>
+        <button onclick="setOp('div')">÷</button>
+    </div>
+
+    <button class="calculate" onclick="calculate()">CALCULATE</button>
+
+    <div id="result"></div>
+</div>
+
+<script>
+let operation = 'add';
+
+function setOp(op){
+    operation = op;
+}
+
+async function calculate(){
+    const a = document.getElementById('num1').value;
+    const b = document.getElementById('num2').value;
+
+    if(!a || !b){
+        document.getElementById('result').innerText = "Enter both numbers!";
+        return;
     }
 
-    res.json({ result: a / b });
-});
+    const response = await fetch('/' + operation + '?a=' + a + '&b=' + b);
+    const data = await response.json();
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    document.getElementById('result').innerText =
+        data.result !== undefined ? "Result: " + data.result : data.error;
+}
+</script>
+
+</body>
+</html>
+`);
 });
