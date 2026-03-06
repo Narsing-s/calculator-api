@@ -1,13 +1,19 @@
 const express = require('express');
+const fetch = require('node-fetch');
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 
 // 👉 Mule CloudHub URL
-const MULE_API = "https://calculator-api-jik9pb.5sc6y6-4.usa-e2.cloudhub.io/api/";
+const MULE_API = "https://calculator-api-jik9pb.5sc6y6-4.usa-e2.cloudhub.io";
 
-// Addition
+// Root endpoint (to avoid Cannot GET /)
+app.get('/', (req, res) => {
+    res.send("Calculator Proxy API is Running 🚀");
+});
+
+// ADD
 app.get('/add', async (req, res) => {
     try {
         const { a, b } = req.query;
@@ -17,11 +23,11 @@ app.get('/add', async (req, res) => {
 
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: "Error calling Mule API (add)" });
+        res.status(500).json({ error: "Error calling Mule API (ADD)" });
     }
 });
 
-// Subtraction
+// SUBTRACT
 app.get('/sub', async (req, res) => {
     try {
         const { a, b } = req.query;
@@ -31,11 +37,11 @@ app.get('/sub', async (req, res) => {
 
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: "Error calling Mule API (sub)" });
+        res.status(500).json({ error: "Error calling Mule API (SUB)" });
     }
 });
 
-// Multiplication
+// MULTIPLY
 app.get('/mul', async (req, res) => {
     try {
         const { a, b } = req.query;
@@ -45,11 +51,11 @@ app.get('/mul', async (req, res) => {
 
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: "Error calling Mule API (mul)" });
+        res.status(500).json({ error: "Error calling Mule API (MUL)" });
     }
 });
 
-// Division
+// DIVIDE
 app.get('/div', async (req, res) => {
     try {
         const { a, b } = req.query;
@@ -59,7 +65,7 @@ app.get('/div', async (req, res) => {
 
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: "Error calling Mule API (div)" });
+        res.status(500).json({ error: "Error calling Mule API (DIV)" });
     }
 });
 
