@@ -1,93 +1,39 @@
 const express = require('express');
+const fetch = require('node-fetch');
+
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-// Home Page (Web UI)
-app.get('/', (req, res) => {
-    res.send(`
-        <html>
-        <head>
-            <title>Calculator</title>
-            <style>
-                body {
-                    font-family: Arial;
-                    text-align: center;
-                    margin-top: 100px;
-                    background: #f4f4f4;
-                }
-                input {
-                    padding: 10px;
-                    margin: 5px;
-                    width: 100px;
-                }
-                button {
-                    padding: 10px 15px;
-                    margin: 5px;
-                    cursor: pointer;
-                }
-                #result {
-                    margin-top: 20px;
-                    font-size: 20px;
-                    font-weight: bold;
-                }
-            </style>
-        </head>
-        <body>
-            <h1>Calculator Web UI 🚀</h1>
+// 👉 Mule CloudHub URL
+const MULE_API = "https://calculator-api-jik9pb.5sc6y6-4.usa-e2.cloudhub.io/api/";
 
-            <input type="number" id="num1" placeholder="Number 1">
-            <input type="number" id="num2" placeholder="Number 2">
-            <br>
+app.get('/add', async (req, res) => {
+    try {
+        const a = req.query.a;
+        const b = req.query.b;
 
-            <button onclick="calculate('add')">+</button>
-            <button onclick="calculate('sub')">-</button>
-            <button onclick="calculate('mul')">*</button>
-            <button onclick="calculate('div')">/</button>
+        const response = await fetch(`${MULE_API}/add?a=${a}&b=${b}`);
+        const data = await response.json();
 
-            <div id="result"></div>
-
-            <script>
-                async function calculate(operation) {
-                    const a = document.getElementById('num1').value;
-                    const b = document.getElementById('num2').value;
-
-                    const response = await fetch('/' + operation + '?a=' + a + '&b=' + b);
-                    const data = await response.json();
-
-                    document.getElementById('result').innerText =
-                        data.result !== undefined
-                        ? "Result: " + data.result
-                        : data.error;
-                }
-            </script>
-        </body>
-        </html>
-    `);
-});
-
-// API Routes
-app.get('/add', (req, res) => {
-    res.json({ result: Number(req.query.a) + Number(req.query.b) });
-});
-
-app.get('/sub', (req, res) => {
-    res.json({ result: Number(req.query.a) - Number(req.query.b) });
-});
-
-app.get('/mul', (req, res) => {
-    res.json({ result: Number(req.query.a) * Number(req.query.b) });
-});
-
-app.get('/div', (req, res) => {
-    const a = Number(req.query.a);
-    const b = Number(req.query.b);
-
-    if (b === 0) {
-        return res.status(400).json({ error: "Cannot divide by zero" });
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: "Error calling Mule API" });
     }
+});
 
-    res.json({ result: a / b });
+app.get('/sub', async (req, res) => {
+    try {
+        const a = req.query.a;
+        const b = req.query.b;
+
+        const response = await fetch(`${MULE_API}/sub?a=${a}&b=${b}`);
+        const data = await response.json();
+
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: "Error calling Mule API" });
+    }
 });
 
 app.listen(PORT, () => {
