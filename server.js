@@ -1,12 +1,11 @@
 const express = require('express');
-const fetch = require('node-fetch');
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 
 // 👉 Mule CloudHub URL
-const MULE_API = "https://calculator-api-jik9pb.5sc6y6-4.usa-e2.cloudhub.io";
+const MULE_API = "https://calculator-api-jik9pb.5sc6y6-4.usa-e2.cloudhub.io/api/";
 
 // Addition
 app.get('/add', async (req, res) => {
