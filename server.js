@@ -145,7 +145,7 @@ const UI_HTML = `<!doctype html>
     .btn { padding:10px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color:var(--text); cursor:pointer; }
     .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); border:none; color:#081226; }
 
-    /* Bottom Navigation Bar */
+    /* Bottom Navigation Bar (optional in future) */
     .bottom-nav {
       position: fixed; left:0; right:0; bottom:0; height: var(--nav-h);
       background: rgba(10,14,30,.85); backdrop-filter: blur(8px);
@@ -160,6 +160,19 @@ const UI_HTML = `<!doctype html>
     .nav-ico { font-size: 20px; line-height: 1; }
     .nav-label { font-size: 12px; }
 
+    /* ✅ Watermark / hashtag at the bottom center */
+    .watermark {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(var(--nav-h, 72px) + 8px); /* sits just above bottom nav if present */
+      font-size: 12px;
+      color: var(--muted);
+      opacity: 0.8;
+      letter-spacing: 0.4px;
+      user-select: none;
+      z-index: 11; /* above potential bottom nav (z-index: 10) */
+    }
   </style>
 </head>
 <body>
@@ -220,3 +233,176 @@ const UI_HTML = `<!doctype html>
             <div class="key">1</div><div class="key">2</div><div class="key">3</div>
             <div class="key">0</div><div class="key">.</div><div class="key muted" data-act="back">⌫</div>
             <div class="key muted wide" data-act="clear">Clear</div>
+            <div class="key accent wide" data-act="compute">Compute</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- (Optional future) Screen: History / Settings can go here -->
+
+  </div>
+
+  <!-- ✅ Watermark -->
+  <div class="watermark" aria-label="Created by Narsing-s">#CreatedByNarsing-s</div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    $("year").textContent = new Date().getFullYear();
+
+    // Theme persistence
+    const THEME_KEY = "calc-ui-theme";
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+    $("theme").checked = (document.documentElement.getAttribute("data-theme") === "light");
+    $("theme").addEventListener("change", () => {
+      const mode = $("theme").checked ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", mode);
+      localStorage.setItem(THEME_KEY, mode);
+    });
+
+    // Base (proxy) — shown in footer for info
+    const base = "/api";
+    $("baseVal").textContent = base;
+
+    // Calculator logic
+    let active = "n1";
+    function setActive(id) {
+      active = id;
+      $("f1").classList.toggle("active", id === "n1");
+      $("f2").classList.toggle("active", id === "n2");
+    }
+    $("f1").addEventListener("click", () => setActive("n1"));
+    $("f2").addEventListener("click", () => setActive("n2"));
+
+    let op = "add";
+    Array.from($("chips").children).forEach(ch => {
+      ch.addEventListener("click", () => {
+        op = ch.getAttribute("data-op");
+        Array.from($("chips").children).forEach(c => c.classList.remove("active"));
+        ch.classList.add("active");
+        buildUrl();
+      });
+    });
+
+    function getVal(id){ return $(id).textContent || ""; }
+    function setVal(id,v){ $(id).textContent = v; }
+
+    function appendToActive(ch){
+      const cur = getVal(active);
+      if (ch === "." && cur.includes(".")) return;
+      setVal(active, cur + ch);
+      buildUrl();
+    }
+    function backspace(){
+      const cur = getVal(active);
+      setVal(active, cur.slice(0, -1));
+      buildUrl();
+    }
+    function clearActive(){
+      setVal(active, "");
+      buildUrl();
+    }
+
+    $("pad").addEventListener("click", (e) => {
+      const key = e.target.closest(".key");
+      if (!key) return;
+      const act = key.getAttribute("data-act");
+      const label = key.textContent.trim();
+      if (act === "back") backspace();
+      else if (act === "clear") clearActive();
+      else if (act === "compute") compute();
+      else if (/^[0-9.]$/.test(label)) appendToActive(label);
+    });
+
+    function buildUrl(){
+      const n1 = encodeURIComponent(getVal("n1"));
+      const n2 = encodeURIComponent(getVal("n2"));
+      const url = \`\${base}/\${op}?num1=\${n1}&num2=\${n2}\`;
+      $("lastUrl").textContent = url;
+      return url;
+    }
+
+    function showResult(obj){
+      const out = $("out");
+      out.className = "result-box";
+      out.textContent = (typeof obj === "string") ? obj : JSON.stringify(obj, null, 2);
+    }
+    function showError(msg){
+      const out = $("out");
+      out.className = "result-box error";
+      out.textContent = msg;
+    }
+
+    async function compute(){
+      try{
+        const v1 = getVal("n1"), v2 = getVal("n2");
+        if (!v1 || !v2) { showError("Please enter both numbers."); return; }
+        if (op === "dev" && Number(v2) === 0) { showError("Division by zero is not allowed."); return; }
+        const url = buildUrl();
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        const text = await res.text();
+        let data; try { data = JSON.parse(text); } catch { data = { raw: text }; }
+        if (!res.ok) {
+          const msg = (data && (data.message || data.error || data.details)) || \`HTTP \${res.status}\`;
+          showError(msg); return;
+        }
+        showResult(data);
+      }catch(e){ showError(e.message); }
+    }
+  </script>
+</body>
+</html>`;
+
+/* ---------- Serve UI ---------- */
+app.get("/", (_req, res) => res.type("html").send(UI_HTML));
+app.get("/ui", (_req, res) => res.type("html").send(UI_HTML));
+
+/* ---------- (Optional) Proxy to Mule at /api/:op ---------- */
+const VALID_OPS = new Set(["add", "sub", "mul", "dev"]);
+
+async function safeParse(resp) {
+  const text = await resp.text();
+  try { return { ok: true, data: JSON.parse(text), raw: text }; }
+  catch { return { ok: false, data: null, raw: text }; }
+}
+
+app.get("/api/:op", async (req, res) => {
+  try {
+    const { op } = req.params;
+    const { num1, num2 } = req.query;
+
+    if (!VALID_OPS.has(op)) {
+      return res.status(400).json({ error: "Invalid operation", allowed: [...VALID_OPS] });
+    }
+    if (num1 === undefined || num2 === undefined) {
+      return res.status(400).json({ error: "Missing query params 'num1' and 'num2'" });
+    }
+
+    const url = `${MULE_API_BASE}/${encodeURIComponent(op)}?num1=${encodeURIComponent(num1)}&num2=${encodeURIComponent(num2)}`;
+    const upstream = await fetch(url, { headers: { Accept: "application/json" } });
+    const parsed = await safeParse(upstream);
+
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({
+        error: "Upstream error from Mule",
+        status: upstream.status,
+        ...(parsed.ok ? { response: parsed.data } : { rawResponse: parsed.raw })
+      });
+    }
+
+    if (parsed.ok) return res.json(parsed.data);
+    return res.json({ raw: parsed.raw });
+
+  } catch (err) {
+    res.status(500).json({ error: "Proxy error", details: err.message });
+  }
+});
+
+/* ---------- Catch-all to UI (non-API paths) ---------- */
+app.get(/^\/(?!api|health).*$/, (_req, res) => res.type("html").send(UI_HTML));
+
+/* ---------- 404 LAST ---------- */
+app.use((req, res) => res.status(404).json({ error: "Not Found", path: req.path }));
+
+app.listen(PORT, () => console.log("Calculator UI running on port " + PORT));
