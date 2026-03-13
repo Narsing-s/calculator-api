@@ -145,7 +145,7 @@
     <div class="header">
       <div class="title">
         <h1>Calculator API</h1>
-        <p>Call Mule APIKit endpoints at <code>/api/*</code> and view the JSON response.</p>
+        <p>Proxying to Mule at <code>/api/*</code>. View JSON responses below.</p>
       </div>
 
       <label class="theme-toggle" title="Toggle light/dark">
@@ -190,8 +190,7 @@
 
         <div class="col-6">
           <label for="base">API Base URL</label>
-          <input id="base" type="text"
-                 value="https://calculator-api-wu11cq.2ky31l-1.deu-c1.eu1.cloudhub.io/api/"/>
+          <input id="base" type="text" value="/api" />
         </div>
 
         <div class="col-12 toolbar" style="margin-top:6px">
@@ -208,7 +207,7 @@
     </div>
 
     <p class="subtitle" style="margin-top:12px">
-      Tip: Your flows expect <code>GET /api/&lt;op&gt;?num1=&lt;n1&gt;&amp;num2=&lt;n2&gt;</code> and return <code>{"result": &lt;number&gt;}</code>.
+      Tip: Proxy expects <code>GET &lt;base&gt;/&lt;op&gt;?num1=&lt;n1&gt;&amp;num2=&lt;n2&gt;</code> and returns <code>{"result": &lt;number&gt;}</code>.
     </p>
 
     <p class="subtitle">© <span id="year"></span> Calculator UI • Powered by Mule</p>
@@ -219,85 +218,72 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
-    $('year').textContent = new Date().getFullYear();
+    $("year").textContent = new Date().getFullYear();
 
     // ----- Theme toggle (persist) -----
-    const THEME_KEY = 'calc-ui-theme';
+    const THEME_KEY = "calc-ui-theme";
     const savedTheme = localStorage.getItem(THEME_KEY);
-    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
-    $('theme').checked = (document.documentElement.getAttribute('data-theme') === 'light');
-    $('theme').addEventListener('change', () => {
-      const mode = $('theme').checked ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', mode);
+    if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+    $("theme").checked = (document.documentElement.getAttribute("data-theme") === "light");
+    $("theme").addEventListener("change", () => {
+      const mode = $("theme").checked ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", mode);
       localStorage.setItem(THEME_KEY, mode);
       toast(`Theme: ${mode}`);
     });
 
     // ----- Helpers -----
     function toast(msg) {
-      const t = $('toast');
+      const t = $("toast");
       t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 1800);
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 1800);
     }
 
-    /**
-     * Normalize a user-supplied Base URL so that:
-     *  - whitespace/newlines are removed
-     *  - trailing slashes are trimmed
-     *  - exactly one '/api' segment is present
-     * Then build:   <apiRoot>/<op>?num1=..&num2=..
-     */
+    function normBase(base) {
+      // Removes whitespace and trailing slashes; ensures no double slashes between segments
+      base = (base || "").replace(/\s+/g, "");
+      base = base.replace(/\/+$/, "");
+      return base || "/api";
+    }
+
     function buildUrl(base, op, n1, n2) {
-      // remove whitespace/newlines within the field (in case of pasted values)
-      base = (base || '').replace(/\s+/g, '');
-
-      // trim trailing slashes
-      base = base.replace(/\/+$/, '');
-
-      // ensure exactly one '/api' at the end of the base
-      let apiRoot = base.endsWith('/api') ? base : (
-        base.endsWith('/api/') ? base.slice(0, -1) : base + '/api'
-      );
-
-      const url = `${apiRoot}/${op}?num1=${encodeURIComponent(n1)}&num2=${encodeURIComponent(n2)}`;
-      $('lastUrl').textContent = url;
+      base = normBase(base);
+      const url = `${base}/${op}?num1=${encodeURIComponent(n1)}&num2=${encodeURIComponent(n2)}`;
+      $("lastUrl").textContent = url;
       return url;
     }
 
     function showResult(data) {
-      const out = $('out');
-      out.className = 'result';
-      const pretty = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      const out = $("out");
+      out.className = "result";
+      const pretty = typeof data === "string" ? data : JSON.stringify(data, null, 2);
       out.textContent = pretty;
     }
 
     function showError(message) {
-      const out = $('out');
-      out.className = 'result error';
+      const out = $("out");
+      out.className = "result error";
       out.textContent = message;
     }
 
     function getInputs() {
-      const n1 = $('num1').value.trim();
-      const n2 = $('num2').value.trim();
-      const base = $('base').value;
-      if (n1 === '' || n2 === '') throw new Error('Please enter both numbers.');
+      const n1 = $("num1").value.trim();
+      const n2 = $("num2").value.trim();
+      const base = $("base").value;
+      if (n1 === "" || n2 === "") throw new Error("Please enter both numbers.");
       return { base, n1, n2 };
     }
 
     async function call(op) {
       try {
         const { base, n1, n2 } = getInputs();
-
-        // client-side check for divide-by-zero
-        if (op === 'dev' && Number(n2) === 0) {
-          showError('Division by zero is not allowed.');
+        if (op === "dev" && Number(n2) === 0) {
+          showError("Division by zero is not allowed.");
           return;
         }
-
         const url = buildUrl(base, op, n1, n2);
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const res = await fetch(url, { headers: { Accept: "application/json" } });
         const text = await res.text();
 
         let data;
@@ -315,22 +301,22 @@
     }
 
     // Quick operation buttons
-    document.querySelectorAll('.chip').forEach(b =>
-      b.addEventListener('click', () => call(b.getAttribute('data-op')))
+    document.querySelectorAll(".chip").forEach((b) =>
+      b.addEventListener("click", () => call(b.getAttribute("data-op")))
     );
 
     // Dropdown Calculate
-    $('go').addEventListener('click', () => call($('op').value));
+    $("go").addEventListener("click", () => call($("op").value));
 
     // Reset
-    $('reset').addEventListener('click', () => {
-      $('num1').value = '';
-      $('num2').value = '';
-      $('out').className = 'result';
-      $('out').textContent = 'Result will appear here.';
-      $('lastUrl').textContent = 'Requested URL will appear here.';
-      $('op').value = 'add';
-      toast('Cleared.');
+    $("reset").addEventListener("click", () => {
+      $("num1").value = "";
+      $("num2").value = "";
+      $("out").className = "result";
+      $("out").textContent = "Result will appear here.";
+      $("lastUrl").textContent = "Requested URL will appear here.";
+      $("op").value = "add";
+      toast("Cleared.");
     });
   </script>
 </body>
