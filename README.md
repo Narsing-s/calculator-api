@@ -19,5 +19,6 @@ Built for quick demos, clean UX, and zero CORS friction—your browser hits `/ap
 - **Watermark**: `#CreatedByNarsing-s` shown near the bottom (clickable link to your profile).
 
 ---
-
 ## 🧱 Architecture
+
+The Calculator UI uses a **simple three‑layer architecture** designed for clarity, speed, and reliability:
