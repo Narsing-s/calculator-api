@@ -5,25 +5,30 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 
-// ---------- Config ----------
 const PORT = process.env.PORT || 3000;
 
-// Your Mule API base. Include `/api` here so we can append /add|/sub|/mul|/dev.
+// ✅ Your Mule base (includes /api)
 const MULE_API_BASE =
   process.env.MULE_API_BASE ||
   "https://calculator-api-jik9pb.5sc6y6-4.usa-e2.cloudhub.io/api";
 
-// ---------- Diagnostics ----------
+// Diagnostics: tag responses + log requests
 app.use((req, res, next) => {
   res.setHeader("X-App", "Calculator-Proxy-UI");
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
 
-// ---------- Static UI ----------
+/* ----------------- Serve UI ----------------- */
+// Serve everything in /public (CSS, JS, index.html)
 app.use(express.static(path.join(__dirname, "public")));
 
-// Health check
+// Ensure "/" serves the HTML file (not a string)
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+/* ----------------- Health ----------------- */
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
@@ -32,23 +37,22 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Root sends UI (index.html in /public)
-app.get("/", (_req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+/* ----------------- Proxy to Mule ----------------- */
+/**
+ * GET /api/:op?num1=..&num2=..
+ * Allowed ops: add, sub, mul, dev
+ * Forwards to: <MULE_API_BASE>/<op>?num1=..&num2=..
+ */
+const VALID_OPS = new Set(["add", "sub", "mul", "dev"]);
 
-// ---------- Helper: Safe JSON parse ----------
-async function safeParse(res) {
-  const text = await res.text();
+async function safeParse(upstreamRes) {
+  const text = await upstreamRes.text();
   try {
     return { ok: true, data: JSON.parse(text), raw: text };
   } catch {
     return { ok: false, data: null, raw: text };
   }
 }
-
-// ---------- Proxy route generator ----------
-const VALID_OPS = new Set(["add", "sub", "mul", "dev"]);
 
 app.get("/api/:op", async (req, res) => {
   try {
@@ -62,10 +66,8 @@ app.get("/api/:op", async (req, res) => {
       return res.status(400).json({ error: "Missing query params 'num1' and 'num2'" });
     }
 
-    // Build Mule URL: <MULE_API_BASE>/<op>?num1=...&num2=...
     const url = `${MULE_API_BASE}/${encodeURIComponent(op)}?num1=${encodeURIComponent(num1)}&num2=${encodeURIComponent(num2)}`;
-
-    const upstream = await fetch(url, { headers: { "Accept": "application/json" } });
+    const upstream = await fetch(url, { headers: { Accept: "application/json" } });
     const parsed = await safeParse(upstream);
 
     if (!upstream.ok) {
@@ -75,16 +77,16 @@ app.get("/api/:op", async (req, res) => {
         ...(parsed.ok ? { response: parsed.data } : { rawResponse: parsed.raw })
       });
     }
-    // Return JSON if possible, else raw text
+
+    // Return JSON if possible, else raw text wrapper
     if (parsed.ok) return res.json(parsed.data);
     return res.json({ raw: parsed.raw });
-
   } catch (err) {
     res.status(500).json({ error: "Proxy error", details: err.message });
   }
 });
 
-// ---------- 404 (keep this last) ----------
+/* ----------------- 404 fallback LAST ----------------- */
 app.use((req, res) => {
   res.status(404).json({ error: "Not Found", path: req.path });
 });
