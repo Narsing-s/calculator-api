@@ -1,4 +1,6 @@
 // server.js
+const fs = require("fs");
+const path = require("path");
 const express = require("express");
 
 const app = express();
@@ -6,19 +8,38 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// ✅ Point to your Mule API (includes /api)
+// ✅ Your Mule Calculator API base (includes /api)
 const MULE_API_BASE =
   process.env.MULE_API_BASE ||
   "https://calculator-api-jik9pb.5sc6y6-4.usa-e2.cloudhub.io/api";
 
-/* ---------- Diagnostics ---------- */
+/* ---------------- Diagnostics ---------------- */
 app.use((req, res, next) => {
   res.setHeader("X-App", "Calculator-Proxy-UI");
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
 
-/* ---------- Health ---------- */
+function dumpRoutes() {
+  const routes = [];
+  const walk = (stack, prefix = "") => {
+    stack.forEach((layer) => {
+      if (layer.route && layer.route.path) {
+        const methods = Object.keys(layer.route.methods)
+          .filter((m) => layer.route.methods[m])
+          .map((m) => m.toUpperCase());
+        routes.push({ methods, path: prefix + layer.route.path });
+      } else if (layer.name === "router" && layer.handle?.stack) {
+        const sub = layer.regexp?.toString() || "";
+        walk(layer.handle.stack, prefix);
+      }
+    });
+  };
+  if (app._router?.stack) walk(app._router.stack);
+  return routes;
+}
+
+/* ---------------- Health ---------------- */
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
@@ -27,7 +48,24 @@ app.get("/health", (_req, res) => {
   });
 });
 
-/* ---------- UI at "/" (INLINE HTML) ---------- */
+/* ---------------- Debug helpers ---------------- */
+// Lists routes registered in this process
+app.get("/__routes", (_req, res) => {
+  res.json({ routes: dumpRoutes() });
+});
+
+// Lists current working directory (to ensure we run the expected code)
+app.get("/__cwd", (_req, res) => {
+  try {
+    const cwd = process.cwd();
+    const items = fs.readdirSync(cwd);
+    res.json({ cwd, items });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/* ---------------- Inline UI ---------------- */
 const UI_HTML = `<!doctype html>
 <html lang="en" data-theme="dark">
 <head>
@@ -135,7 +173,7 @@ const UI_HTML = `<!doctype html>
 
         <div class="col-6">
           <label for="base">API Base URL</label>
-          <!-- Default to *local proxy* so no CORS -->
+          <!-- Default to local proxy to avoid CORS -->
           <input id="base" type="text" value="/api" />
         </div>
 
@@ -158,13 +196,10 @@ const UI_HTML = `<!doctype html>
     <p class="subtitle">© <span id="year"></span> Calculator UI • Powered by Mule</p>
   </div>
 
-  <div id="toast" class="toast" role="status" aria-live="polite" style="display:none"></div>
-
   <script>
     const $ = (id) => document.getElementById(id);
     $("year").textContent = new Date().getFullYear();
 
-    // Theme toggle (persist)
     const THEME_KEY = "calc-ui-theme";
     const savedTheme = localStorage.getItem(THEME_KEY);
     if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
@@ -183,101 +218,3 @@ const UI_HTML = `<!doctype html>
     function buildUrl(base, op, n1, n2) {
       base = normBase(base);
       const url = \`\${base}/\${op}?num1=\${encodeURIComponent(n1)}&num2=\${encodeURIComponent(n2)}\`;
-      $("lastUrl").textContent = url;
-      return url;
-    }
-    function showResult(data) {
-      const out = $("out"); out.className = "result";
-      out.textContent = (typeof data === "string") ? data : JSON.stringify(data, null, 2);
-    }
-    function showError(message) {
-      const out = $("out"); out.className = "result error";
-      out.textContent = message;
-    }
-    function getInputs() {
-      const n1 = $("num1").value.trim();
-      const n2 = $("num2").value.trim();
-      const base = $("base").value;
-      if (n1 === "" || n2 === "") throw new Error("Please enter both numbers.");
-      return { base, n1, n2 };
-    }
-    async function call(op) {
-      try {
-        const { base, n1, n2 } = getInputs();
-        if (op === "dev" && Number(n2) === 0) { showError("Division by zero is not allowed."); return; }
-        const url = buildUrl(base, op, n1, n2);
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
-        const text = await res.text();
-        let data; try { data = JSON.parse(text); } catch { data = { raw: text }; }
-        if (!res.ok) {
-          const msg = (data && (data.message || data.error || data.details)) || \`HTTP \${res.status}\`;
-          showError(msg); return;
-        }
-        showResult(data);
-      } catch (err) { showError(err.message); }
-    }
-    document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => call(b.getAttribute("data-op"))));
-    $("go").addEventListener("click", () => call($("op").value));
-    $("reset").addEventListener("click", () => {
-      $("num1").value = ""; $("num2").value = "";
-      $("out").className = "result"; $("out").textContent = "Result will appear here.";
-      $("lastUrl").textContent = "Requested URL will appear here."; $("op").value = "add";
-    });
-  </script>
-</body>
-</html>`;
-
-// Serve UI at root (no static folder required)
-app.get("/", (_req, res) => res.send(UI_HTML));
-
-/* ---------- Proxy to Mule at /api/:op ---------- */
-const VALID_OPS = new Set(["add", "sub", "mul", "dev"]);
-
-async function safeParse(upstreamRes) {
-  const text = await upstreamRes.text();
-  try {
-    return { ok: true, data: JSON.parse(text), raw: text };
-  } catch {
-    return { ok: false, data: null, raw: text };
-  }
-}
-
-app.get("/api/:op", async (req, res) => {
-  try {
-    const { op } = req.params;
-    const { num1, num2 } = req.query;
-
-    if (!VALID_OPS.has(op)) {
-      return res.status(400).json({ error: "Invalid operation", allowed: [...VALID_OPS] });
-    }
-    if (num1 === undefined || num2 === undefined) {
-      return res.status(400).json({ error: "Missing query params 'num1' and 'num2'" });
-    }
-
-    const url = `${MULE_API_BASE}/${encodeURIComponent(op)}?num1=${encodeURIComponent(num1)}&num2=${encodeURIComponent(num2)}`;
-    const upstream = await fetch(url, { headers: { Accept: "application/json" } });
-    const parsed = await safeParse(upstream);
-
-    if (!upstream.ok) {
-      return res.status(upstream.status).json({
-        error: "Upstream error from Mule",
-        status: upstream.status,
-        ...(parsed.ok ? { response: parsed.data } : { rawResponse: parsed.raw })
-      });
-    }
-
-    if (parsed.ok) return res.json(parsed.data);
-    return res.json({ raw: parsed.raw });
-  } catch (err) {
-    res.status(500).json({ error: "Proxy error", details: err.message });
-  }
-});
-
-/* ---------- 404 LAST ---------- */
-app.use((req, res) => {
-  res.status(404).json({ error: "Not Found", path: req.path });
-});
-
-app.listen(PORT, () => {
-  console.log(`Calculator Proxy UI running on port ${PORT}`);
-});
