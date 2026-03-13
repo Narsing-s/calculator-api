@@ -1,7 +1,7 @@
 {
-  "name": "calculator-api",
+  "name": "calculator-ui",
   "version": "1.0.0",
-  "description": "Calculator proxy with UI",
+  "description": "Android-like calculator web UI that proxies to Mule API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,4 +11,3 @@
     "express": "^4.18.2"
   }
 }
-``
