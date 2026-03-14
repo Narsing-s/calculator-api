@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
     <http:listener-config name="calculator-api-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="8081" />
     </http:listener-config>
     <apikit:config name="calculator-api-config" api="calculator-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
-    <flow name="calculator-api-main">
+    <wsc:config name="Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="4ed86ab2-ca85-464d-99b4-45dbdeca3e6b" >
+		<wsc:connection wsdlLocation="http://webservices.daehosting.com/services/TemperatureConversions.wso?WSDL" service="TemperatureConversions" port="TemperatureConversionsSoap12" address="http://webservices.daehosting.com/services/TemperatureConversions.wso" />
+	</wsc:config>
+	<flow name="calculator-api-main">
         <http:listener config-ref="calculator-api-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
@@ -177,7 +181,7 @@ output application/json
 		<logger level="INFO" doc:name="After transform" doc:id="fd64987f-ee39-4910-8104-0277b7eef244" message="--------------After transform------------" />
 		<logger level="INFO" doc:name="End Flow" doc:id="f75023af-1ed4-44e7-a0e3-6c3ebee5172f" message="#[message.payload]" />
     </flow>
-    <flow name="get:\sub:calculator-api-config">
+	<flow name="get:\sub:calculator-api-config">
         <logger level="INFO" doc:name="Start Flow" doc:id="e4ffd3e2-6a52-45c2-93fc-08449cc07a8e" message="-------------------Start Flow-------------"/>
 		<set-variable value="#[attributes.queryParams.num1]" doc:name="num1" doc:id="f403f45a-b282-4841-8569-6e0e8977458b" variableName="num1"/>
 		<set-variable value="#[attributes.queryParams.num2]" doc:name="num2" doc:id="0f339bb1-8259-4343-981c-1124884f40da" variableName="num2"/>
